@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hair Color Change POC</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 { margin-bottom: 8px; font-size: 1.5em; }
+    .subtitle { color: #888; margin-bottom: 20px; font-size: 0.9em; }
+    .status {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 10px 20px;
+      margin-bottom: 20px;
+      font-size: 0.85em;
+      max-width: 700px;
+      text-align: center;
+    }
+    .status.ready { border-color: #00b894; color: #00b894; }
+    .status.processing { border-color: #fdcb6e; color: #fdcb6e; }
+    .status.error { border-color: #e17055; color: #e17055; }
+
+    .upload-area {
+      border: 2px dashed #0f3460;
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.3s;
+      margin-bottom: 20px;
+      max-width: 700px;
+      width: 100%;
+    }
+    .upload-area:hover { border-color: #e94560; }
+    .upload-area input { display: none; }
+
+    .main-container {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .canvas-wrapper {
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #16213e;
+    }
+    .canvas-wrapper canvas {
+      display: block;
+      max-width: 350px;
+      height: auto;
+    }
+    .canvas-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.7);
+      padding: 8px;
+      text-align: center;
+      font-size: 0.85em;
+    }
+
+    .color-palette {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+      max-width: 700px;
+    }
+    .color-btn {
+      border: 2px solid transparent;
+      border-radius: 8px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 0.85em;
+      color: #fff;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .color-btn:hover { transform: scale(1.05); }
+    .color-btn.active { border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+    .color-swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .controls {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 20px;
+      max-width: 700px;
+      width: 100%;
+    }
+    .slider-group {
+      flex: 1;
+      min-width: 200px;
+    }
+    .slider-group label {
+      display: block;
+      font-size: 0.8em;
+      margin-bottom: 4px;
+      color: #aaa;
+    }
+    .slider-group input[type=range] { width: 100%; }
+
+    .mask-debug {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .mask-debug canvas {
+      max-width: 250px;
+      border-radius: 8px;
+      border: 1px solid #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>Hair Color Change POC</h1>
+  <p class="subtitle">MediaPipe Hair Segmenter + Canvas Color Transfer</p>
+
+  <div class="status" id="status">Initializing MediaPipe...</div>
+
+  <div class="upload-area" id="uploadArea">
+    <p>Click or drag & drop a photo</p>
+    <p style="font-size:0.8em; color:#888; margin-top:8px;">JPG/PNG supported</p>
+    <input type="file" id="fileInput" accept="image/*">
+  </div>
+
+  <div class="color-palette" id="colorPalette"></div>
+
+  <div class="controls" id="controls" style="display:none;">
+    <div class="slider-group">
+      <label>Intensity: <span id="intensityValue">70</span>%</label>
+      <input type="range" id="intensity" min="0" max="100" value="70">
+    </div>
+    <div class="slider-group">
+      <label>Brightness: <span id="brightnessValue">0</span></label>
+      <input type="range" id="brightness" min="-50" max="50" value="0">
+    </div>
+  </div>
+
+  <div class="main-container" id="mainContainer" style="display:none;">
+    <div class="canvas-wrapper">
+      <canvas id="originalCanvas"></canvas>
+      <div class="canvas-label">Original</div>
+    </div>
+    <div class="canvas-wrapper">
+      <canvas id="resultCanvas"></canvas>
+      <div class="canvas-label" id="resultLabel">Result</div>
+    </div>
+  </div>
+
+  <div class="mask-debug" id="maskDebug" style="display:none;">
+    <p style="font-size:0.8em; color:#666; margin-bottom:4px;">Hair Mask (debug)</p>
+    <canvas id="maskCanvas"></canvas>
+  </div>
+
+  <!-- MediaPipe -->
+  <script type="module">
+    import { ImageSegmenter, FilesetResolver } from
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/+esm';
+
+    // --- Hair color presets ---
+    const COLORS = [
+      { name: 'Ash Brown',    h: 25,  s: 0.35, v: 0.50, bg: '#7a5c47' },
+      { name: 'Pink Beige',   h: 350, s: 0.28, v: 0.70, bg: '#c4868e' },
+      { name: 'Olive Beige',  h: 42,  s: 0.35, v: 0.60, bg: '#a38a5c' },
+      { name: 'Lavender',     h: 270, s: 0.32, v: 0.60, bg: '#8c6aab' },
+      { name: 'Dark Cherry',  h: 340, s: 0.55, v: 0.40, bg: '#8c3050' },
+      { name: 'Honey Blonde', h: 38,  s: 0.55, v: 0.78, bg: '#c9a04a' },
+      { name: 'Blue Black',   h: 220, s: 0.30, v: 0.18, bg: '#202838' },
+      { name: 'Copper',       h: 18,  s: 0.65, v: 0.60, bg: '#b86535' },
+    ];
+
+    // --- State ---
+    let segmenter = null;
+    let originalImageData = null;
+    let hairMask = null;
+    let imageWidth = 0;
+    let imageHeight = 0;
+    let selectedColor = COLORS[0];
+
+    const statusEl = document.getElementById('status');
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const mainContainer = document.getElementById('mainContainer');
+    const controlsEl = document.getElementById('controls');
+    const originalCanvas = document.getElementById('originalCanvas');
+    const resultCanvas = document.getElementById('resultCanvas');
+    const maskCanvas = document.getElementById('maskCanvas');
+    const resultLabel = document.getElementById('resultLabel');
+    const maskDebug = document.getElementById('maskDebug');
+    const intensitySlider = document.getElementById('intensity');
+    const brightnessSlider = document.getElementById('brightness');
+
+    // --- Initialize MediaPipe ---
+    async function init() {
+      try {
+        statusEl.textContent = 'Loading MediaPipe Vision...';
+        const vision = await FilesetResolver.forVisionTasks(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm'
+        );
+
+        statusEl.textContent = 'Loading Hair Segmenter model...';
+        segmenter = await ImageSegmenter.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/hair_segmenter/float32/latest/hair_segmenter.tflite',
+            delegate: 'GPU',
+          },
+          runningMode: 'IMAGE',
+          outputCategoryMask: true,
+          outputConfidenceMasks: true,
+        });
+
+        statusEl.textContent = 'Ready! Upload a photo to start.';
+        statusEl.className = 'status ready';
+      } catch (err) {
+        statusEl.textContent = `Error: ${err.message}`;
+        statusEl.className = 'status error';
+        console.error(err);
+      }
+    }
+
+    // --- Build color palette ---
+    function buildPalette() {
+      const palette = document.getElementById('colorPalette');
+      COLORS.forEach((color, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'color-btn' + (i === 0 ? ' active' : '');
+        btn.style.background = '#16213e';
+        btn.innerHTML = `<span class="color-swatch" style="background:${color.bg}"></span>${color.name}`;
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          selectedColor = color;
+          if (hairMask) applyColor();
+        });
+        palette.appendChild(btn);
+      });
+    }
+
+    // --- File upload ---
+    uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.style.borderColor = '#e94560'; });
+    uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = '#0f3460'; });
+    uploadArea.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadArea.style.borderColor = '#0f3460';
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', e => {
+      if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    async function handleFile(file) {
+      if (!segmenter) { alert('Model not loaded yet'); return; }
+
+      statusEl.textContent = 'Processing image...';
+      statusEl.className = 'status processing';
+
+      const img = new Image();
+      img.onload = async () => {
+        // Resize to manageable size
+        const maxDim = 512;
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          const scale = maxDim / Math.max(w, h);
+          w = Math.round(w * scale);
+          h = Math.round(h * scale);
+        }
+        imageWidth = w;
+        imageHeight = h;
+
+        // Draw original
+        originalCanvas.width = w;
+        originalCanvas.height = h;
+        const origCtx = originalCanvas.getContext('2d');
+        origCtx.drawImage(img, 0, 0, w, h);
+        originalImageData = origCtx.getImageData(0, 0, w, h);
+
+        // Result canvas
+        resultCanvas.width = w;
+        resultCanvas.height = h;
+
+        // Run segmentation
+        statusEl.textContent = 'Segmenting hair...';
+        try {
+          const result = segmenter.segment(originalCanvas);
+
+          // Extract hair mask from confidence masks
+          if (result.confidenceMasks && result.confidenceMasks.length > 0) {
+            const mask = result.confidenceMasks[0];
+            hairMask = new Float32Array(w * h);
+
+            // Get mask data
+            const maskData = mask.getAsFloat32Array();
+            for (let i = 0; i < w * h; i++) {
+              // MediaPipe returns 0=hair, 1=not-hair; invert for our use
+              hairMask[i] = 1.0 - maskData[i];
+            }
+
+            // Draw debug mask
+            drawMask();
+
+            // Apply color
+            applyColor();
+
+            mainContainer.style.display = 'flex';
+            controlsEl.style.display = 'flex';
+            maskDebug.style.display = 'block';
+
+            statusEl.textContent = 'Done! Try different colors.';
+            statusEl.className = 'status ready';
+          } else {
+            throw new Error('No confidence mask returned');
+          }
+
+          // Clean up
+          result.close();
+        } catch (err) {
+          statusEl.textContent = `Segmentation error: ${err.message}`;
+          statusEl.className = 'status error';
+          console.error(err);
+        }
+      };
+      img.src = URL.createObjectURL(file);
+    }
+
+    // --- Draw mask debug view ---
+    function drawMask() {
+      maskCanvas.width = imageWidth;
+      maskCanvas.height = imageHeight;
+      const ctx = maskCanvas.getContext('2d');
+      const imgData = ctx.createImageData(imageWidth, imageHeight);
+
+      for (let i = 0; i < hairMask.length; i++) {
+        const v = Math.round(hairMask[i] * 255);
+        imgData.data[i * 4] = v;       // R
+        imgData.data[i * 4 + 1] = v;   // G
+        imgData.data[i * 4 + 2] = v;   // B
+        imgData.data[i * 4 + 3] = 255; // A
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    // --- HSV helpers ---
+    function rgbToHsv(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const d = max - min;
+      let h = 0, s = max === 0 ? 0 : d / max, v = max;
+      if (d !== 0) {
+        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        else if (max === g) h = ((b - r) / d + 2) / 6;
+        else h = ((r - g) / d + 4) / 6;
+      }
+      return [h * 360, s, v];
+    }
+
+    function hsvToRgb(h, s, v) {
+      h = ((h % 360) + 360) % 360;
+      const c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
+      let r, g, b;
+      if (h < 60)       { r = c; g = x; b = 0; }
+      else if (h < 120) { r = x; g = c; b = 0; }
+      else if (h < 180) { r = 0; g = c; b = x; }
+      else if (h < 240) { r = 0; g = x; b = c; }
+      else if (h < 300) { r = x; g = 0; b = c; }
+      else              { r = c; g = 0; b = x; }
+      return [
+        Math.round((r + m) * 255),
+        Math.round((g + m) * 255),
+        Math.round((b + m) * 255),
+      ];
+    }
+
+    // --- Apply color to hair ---
+    function applyColor() {
+      if (!hairMask || !originalImageData) return;
+
+      const ctx = resultCanvas.getContext('2d');
+      const result = ctx.createImageData(imageWidth, imageHeight);
+      const src = originalImageData.data;
+
+      const intensity = intensitySlider.value / 100;
+      const brightnessAdj = brightnessSlider.value / 100;
+
+      for (let i = 0; i < hairMask.length; i++) {
+        const alpha = hairMask[i] * intensity;
+        const px = i * 4;
+
+        const r = src[px], g = src[px + 1], b = src[px + 2];
+
+        if (alpha > 0.05) {
+          const [oh, os, ov] = rgbToHsv(r, g, b);
+
+          // Replace hue and blend saturation, preserve luminance structure
+          const newH = selectedColor.h;
+          const newS = selectedColor.s * 0.65 + os * 0.35;
+          const newV = Math.min(1, Math.max(0,
+            selectedColor.v * 0.35 + ov * 0.65 + brightnessAdj
+          ));
+
+          const [nr, ng, nb] = hsvToRgb(newH, newS, newV);
+
+          result.data[px]     = Math.round(nr * alpha + r * (1 - alpha));
+          result.data[px + 1] = Math.round(ng * alpha + g * (1 - alpha));
+          result.data[px + 2] = Math.round(nb * alpha + b * (1 - alpha));
+        } else {
+          result.data[px]     = r;
+          result.data[px + 1] = g;
+          result.data[px + 2] = b;
+        }
+        result.data[px + 3] = 255;
+      }
+
+      ctx.putImageData(result, 0, 0);
+      resultLabel.textContent = selectedColor.name;
+    }
+
+    // --- Slider events ---
+    intensitySlider.addEventListener('input', () => {
+      document.getElementById('intensityValue').textContent = intensitySlider.value;
+      applyColor();
+    });
+    brightnessSlider.addEventListener('input', () => {
+      document.getElementById('brightnessValue').textContent = brightnessSlider.value;
+      applyColor();
+    });
+
+    // --- Boot ---
+    buildPalette();
+    init();
+  </script>
+</body>
+</html>
