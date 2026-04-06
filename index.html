@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hair Color Live Preview</title>
+  <title>Hair Style & Color AI</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -18,175 +18,145 @@
     }
     h1 { margin-bottom: 4px; font-size: 1.3em; }
     .subtitle { color: #888; margin-bottom: 12px; font-size: 0.8em; }
-
     .status {
-      background: #16213e;
-      border: 1px solid #0f3460;
-      border-radius: 8px;
-      padding: 8px 16px;
-      margin-bottom: 12px;
-      font-size: 0.8em;
-      text-align: center;
+      background: #16213e; border: 1px solid #0f3460; border-radius: 8px;
+      padding: 8px 16px; margin-bottom: 12px; font-size: 0.8em; text-align: center;
     }
     .status.ready { border-color: #00b894; color: #00b894; }
+    .status.processing { border-color: #fdcb6e; color: #fdcb6e; }
     .status.error { border-color: #e17055; color: #e17055; }
 
     /* Mode toggle */
-    .mode-toggle {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
+    .mode-toggle { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center; }
     .mode-btn {
-      padding: 8px 20px;
-      border: 2px solid #0f3460;
-      border-radius: 8px;
-      background: #16213e;
-      color: #aaa;
-      cursor: pointer;
-      font-size: 0.85em;
-      transition: all 0.2s;
+      padding: 8px 16px; border: 2px solid #0f3460; border-radius: 8px;
+      background: #16213e; color: #aaa; cursor: pointer; font-size: 0.8em; transition: all 0.2s;
     }
     .mode-btn.active { border-color: #e94560; color: #fff; background: #e94560; }
 
     /* Video area */
     .video-container {
-      position: relative;
-      margin-bottom: 12px;
-      border-radius: 12px;
-      overflow: hidden;
-      background: #000;
-      max-width: 640px;
-      width: 100%;
+      position: relative; margin-bottom: 12px; border-radius: 12px;
+      overflow: hidden; background: #000; max-width: 640px; width: 100%;
     }
-    .video-container video {
-      display: none;
-      width: 100%;
-    }
-    .video-container canvas {
-      display: block;
-      width: 100%;
-    }
+    .video-container video { display: none; width: 100%; }
+    .video-container canvas { display: block; width: 100%; }
     .fps-counter {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      background: rgba(0,0,0,0.6);
-      padding: 3px 8px;
-      border-radius: 4px;
-      font-size: 0.7em;
-      font-family: monospace;
+      position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.6);
+      padding: 3px 8px; border-radius: 4px; font-size: 0.7em; font-family: monospace;
     }
     .color-label {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      background: rgba(0,0,0,0.6);
-      padding: 3px 10px;
-      border-radius: 4px;
-      font-size: 0.8em;
+      position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6);
+      padding: 3px 10px; border-radius: 4px; font-size: 0.8em;
     }
 
-    /* Upload area (photo mode) */
+    /* Upload area */
     .upload-area {
-      border: 2px dashed #0f3460;
-      border-radius: 12px;
-      padding: 30px;
-      text-align: center;
-      cursor: pointer;
-      margin-bottom: 12px;
-      max-width: 640px;
-      width: 100%;
+      border: 2px dashed #0f3460; border-radius: 12px; padding: 30px;
+      text-align: center; cursor: pointer; margin-bottom: 12px; max-width: 640px; width: 100%;
     }
     .upload-area:hover { border-color: #e94560; }
     .upload-area input { display: none; }
 
     /* Photo comparison */
     .photo-container {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-bottom: 12px;
+      display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px;
     }
-    .photo-wrapper {
-      position: relative;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #16213e;
-    }
+    .photo-wrapper { position: relative; border-radius: 8px; overflow: hidden; background: #16213e; }
     .photo-wrapper canvas { display: block; max-width: 310px; height: auto; }
     .photo-label {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(0,0,0,0.7);
-      padding: 6px;
-      text-align: center;
-      font-size: 0.8em;
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.7); padding: 6px; text-align: center; font-size: 0.8em;
     }
 
     /* Color palette */
-    .color-palette {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      justify-content: center;
-      margin-bottom: 12px;
-      max-width: 640px;
-    }
+    .color-palette { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 12px; max-width: 640px; }
     .color-btn {
-      border: 2px solid transparent;
-      border-radius: 8px;
-      padding: 6px 12px;
-      cursor: pointer;
-      font-size: 0.8em;
-      color: #fff;
-      background: #16213e;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 5px;
+      border: 2px solid transparent; border-radius: 8px; padding: 6px 12px;
+      cursor: pointer; font-size: 0.8em; color: #fff; background: #16213e;
+      transition: all 0.2s; display: flex; align-items: center; gap: 5px;
     }
     .color-btn:hover { transform: scale(1.05); }
     .color-btn.active { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.3); }
-    .color-swatch {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      border: 1px solid rgba(255,255,255,0.3);
-    }
+    .color-swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3); }
 
-    /* Intensity slider */
+    /* Controls */
     .controls {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-bottom: 12px;
-      max-width: 640px;
-      width: 100%;
+      display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+      margin-bottom: 12px; max-width: 640px; width: 100%;
     }
     .slider-group { flex: 1; min-width: 180px; }
     .slider-group label { display: block; font-size: 0.75em; margin-bottom: 2px; color: #aaa; }
     .slider-group input[type=range] { width: 100%; }
 
+    /* ====== STYLE FINDER ====== */
+    .style-upload-area {
+      border: 2px dashed #0f3460; border-radius: 12px; padding: 20px;
+      text-align: center; cursor: pointer; margin-bottom: 12px; max-width: 640px; width: 100%;
+    }
+    .style-upload-area:hover { border-color: #e94560; }
+    .style-upload-area input { display: none; }
+
+    .face-result {
+      background: #16213e; border: 1px solid #0f3460; border-radius: 12px;
+      padding: 16px 24px; margin-bottom: 16px; text-align: center; max-width: 640px; width: 100%;
+    }
+    .face-shape-badge {
+      display: inline-block; background: #e94560; color: #fff; padding: 6px 20px;
+      border-radius: 20px; font-size: 1.1em; font-weight: bold; margin: 8px 0;
+    }
+    .face-measurements { font-size: 0.75em; color: #888; margin-top: 6px; }
+
+    /* Category filters */
+    .filter-section { margin-bottom: 12px; max-width: 640px; width: 100%; }
+    .filter-label { font-size: 0.75em; color: #aaa; margin-bottom: 4px; }
+    .filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .filter-btn {
+      padding: 4px 12px; border: 1px solid #0f3460; border-radius: 16px;
+      background: #16213e; color: #aaa; cursor: pointer; font-size: 0.75em; transition: all 0.2s;
+    }
+    .filter-btn.active { border-color: #00b894; color: #00b894; background: #0a2a1e; }
+
+    /* Style cards grid */
+    .style-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 12px; max-width: 640px; width: 100%; margin-bottom: 20px;
+    }
+    .style-card {
+      background: #16213e; border: 2px solid #0f3460; border-radius: 10px;
+      overflow: hidden; cursor: pointer; transition: all 0.2s;
+    }
+    .style-card:hover { border-color: #e94560; transform: translateY(-2px); }
+    .style-card-img {
+      width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block; background: #0a0a1a;
+    }
+    .style-card-body { padding: 8px 10px; }
+    .style-card-name { font-size: 0.85em; font-weight: bold; margin-bottom: 2px; }
+    .style-card-meta { font-size: 0.65em; color: #888; margin-bottom: 4px; }
+    .style-card-match {
+      font-size: 0.7em; padding: 2px 8px; border-radius: 10px; display: inline-block;
+    }
+    .match-high { background: #0a2a1e; color: #00b894; }
+    .match-mid { background: #2a2a0e; color: #fdcb6e; }
+    .match-low { background: #2a0e0e; color: #e17055; }
+    .style-card-desc { font-size: 0.7em; color: #aaa; margin-top: 4px; line-height: 1.3; }
+
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
-  <h1>Hair Color Live Preview</h1>
-  <p class="subtitle">Real-time camera color change with MediaPipe</p>
+  <h1>Hair Style & Color AI</h1>
+  <p class="subtitle">Face shape analysis + Style recommendation + Live color preview</p>
   <div class="status" id="status">Initializing...</div>
 
   <!-- Mode toggle -->
   <div class="mode-toggle">
     <button class="mode-btn active" id="modeCameraBtn">Camera (Live)</button>
     <button class="mode-btn" id="modePhotoBtn">Photo (Upload)</button>
+    <button class="mode-btn" id="modeStyleBtn">Style Finder</button>
   </div>
 
-  <!-- Camera mode -->
+  <!-- ====== CAMERA MODE ====== -->
   <div id="cameraMode">
     <div class="video-container" id="videoContainer">
       <video id="video" autoplay playsinline></video>
@@ -196,11 +166,11 @@
     </div>
   </div>
 
-  <!-- Photo mode -->
+  <!-- ====== PHOTO MODE ====== -->
   <div id="photoMode" class="hidden">
     <div class="upload-area" id="uploadArea">
       <p>Click or drag & drop a photo</p>
-      <p style="font-size:0.75em; color:#888; margin-top:6px;">JPG/PNG supported</p>
+      <p style="font-size:0.75em; color:#888; margin-top:6px;">JPG/PNG</p>
       <input type="file" id="fileInput" accept="image/*">
     </div>
     <div class="photo-container hidden" id="photoContainer">
@@ -215,24 +185,62 @@
     </div>
   </div>
 
-  <!-- Shared controls -->
-  <div class="color-palette" id="colorPalette"></div>
-  <div class="controls">
-    <div class="slider-group">
-      <label>Intensity: <span id="intensityValue">70</span>%</label>
-      <input type="range" id="intensity" min="0" max="100" value="70">
+  <!-- ====== STYLE FINDER MODE ====== -->
+  <div id="styleMode" class="hidden">
+    <div class="style-upload-area" id="styleUploadArea">
+      <p>Click to upload your photo for face analysis</p>
+      <p style="font-size:0.75em; color:#888; margin-top:4px;">JPG/PNG - front-facing photo works best</p>
+      <input type="file" id="styleFileInput" accept="image/*">
+      <canvas id="styleAnalysisCanvas" style="display:none;"></canvas>
     </div>
-    <div class="slider-group">
-      <label>Brightness: <span id="brightnessValue">0</span></label>
-      <input type="range" id="brightness" min="-50" max="50" value="0">
+
+    <div id="faceResult" class="face-result hidden">
+      <p style="font-size:0.8em; color:#aaa;">Your face shape</p>
+      <div class="face-shape-badge" id="faceShapeBadge">--</div>
+      <div class="face-measurements" id="faceMeasurements"></div>
+    </div>
+
+    <div id="styleFilters" class="filter-section hidden">
+      <div class="filter-label">Length</div>
+      <div class="filter-row" id="lengthFilters">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="short">Short</button>
+        <button class="filter-btn" data-filter="medium">Medium</button>
+        <button class="filter-btn" data-filter="long">Long</button>
+      </div>
+      <div class="filter-label">Taste</div>
+      <div class="filter-row" id="tasteFilters">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="natural">Natural</button>
+        <button class="filter-btn" data-filter="cool">Cool</button>
+        <button class="filter-btn" data-filter="feminine">Feminine</button>
+        <button class="filter-btn" data-filter="casual">Casual</button>
+      </div>
+    </div>
+
+    <div class="style-grid" id="styleGrid"></div>
+  </div>
+
+  <!-- ====== SHARED COLOR CONTROLS (camera/photo) ====== -->
+  <div id="colorControls">
+    <div class="color-palette" id="colorPalette"></div>
+    <div class="controls">
+      <div class="slider-group">
+        <label>Intensity: <span id="intensityValue">70</span>%</label>
+        <input type="range" id="intensity" min="0" max="100" value="70">
+      </div>
+      <div class="slider-group">
+        <label>Brightness: <span id="brightnessValue">0</span></label>
+        <input type="range" id="brightness" min="-50" max="50" value="0">
+      </div>
     </div>
   </div>
 
   <script type="module">
-    import { ImageSegmenter, FilesetResolver } from
+    import { ImageSegmenter, FaceLandmarker, FilesetResolver } from
       'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/+esm';
 
-    // --- Color presets ---
+    // ==================== COLOR PRESETS ====================
     const COLORS = [
       { name: 'Ash Brown',    h: 25,  s: 0.35, v: 0.50, bg: '#7a5c47' },
       { name: 'Pink Beige',   h: 350, s: 0.28, v: 0.70, bg: '#c4868e' },
@@ -244,17 +252,111 @@
       { name: 'Copper',       h: 18,  s: 0.65, v: 0.60, bg: '#b86535' },
     ];
 
-    // --- State ---
+    // ==================== HAIRSTYLE CATALOG ====================
+    const FACE_SHAPE_NAMES = {
+      oval: '卵型', round: '丸型', square: '四角型',
+      heart: 'ハート型', oblong: '面長型', diamond: 'ひし形'
+    };
+
+    const STYLES = [
+      // SHORT
+      { name: 'エアリーボブ', length: 'short', taste: 'natural',
+        desc: '軽やかなボブ。顔周りをすっきり見せつつ、動きを演出',
+        img: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=300&h=400&fit=crop',
+        match: { oval: 0.9, round: 0.7, square: 0.8, heart: 0.9, oblong: 0.6, diamond: 0.8 } },
+      { name: 'ハンサムショート', length: 'short', taste: 'cool',
+        desc: '耳にかかる長さのクールなショート。トップに動きを出して立体感',
+        img: 'https://images.unsplash.com/photo-1596178060671-7a80dc8059ea?w=300&h=400&fit=crop',
+        match: { oval: 0.9, round: 0.6, square: 0.7, heart: 0.8, oblong: 0.8, diamond: 0.9 } },
+      { name: 'マッシュショート', length: 'short', taste: 'casual',
+        desc: '丸みのあるシルエット。可愛さとカジュアル感を両立',
+        img: 'https://images.unsplash.com/photo-1492106087820-71f1a00d2b11?w=300&h=400&fit=crop',
+        match: { oval: 0.8, round: 0.5, square: 0.8, heart: 0.7, oblong: 0.9, diamond: 0.7 } },
+      { name: 'フレンチボブ', length: 'short', taste: 'feminine',
+        desc: 'あごラインの上品なボブ。パリジェンヌ風の洗練されたスタイル',
+        img: 'https://images.unsplash.com/photo-1605980776566-0486c3b394f4?w=300&h=400&fit=crop',
+        match: { oval: 0.9, round: 0.6, square: 0.7, heart: 0.9, oblong: 0.7, diamond: 0.8 } },
+      { name: 'ウルフショート', length: 'short', taste: 'cool',
+        desc: 'トップ短め+襟足長めのレイヤー。小顔効果と個性を両立',
+        img: 'https://images.unsplash.com/photo-1554519515-242161756769?w=300&h=400&fit=crop',
+        match: { oval: 0.8, round: 0.9, square: 0.8, heart: 0.7, oblong: 0.7, diamond: 0.9 } },
+
+      // MEDIUM
+      { name: 'くびれミディ', length: 'medium', taste: 'feminine',
+        desc: '首元でくびれるシルエット。小顔効果抜群で大人かわいい',
+        img: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?w=300&h=400&fit=crop',
+        match: { oval: 0.9, round: 0.9, square: 0.7, heart: 0.8, oblong: 0.6, diamond: 0.8 } },
+      { name: 'レイヤーミディ', length: 'medium', taste: 'natural',
+        desc: '顔周りにレイヤーを入れた軽やかなミディアム。どんなシーンにも',
+        img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=400&fit=crop',
+        match: { oval: 0.9, round: 0.8, square: 0.9, heart: 0.8, oblong: 0.7, diamond: 0.8 } },
+      { name: '外ハネミディ', length: 'medium', taste: 'casual',
+        desc: '毛先を外ハネにしたカジュアルスタイル。こなれ感がポイント',
+        img: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=300&h=400&fit=crop',
+        match: { oval: 0.8, round: 0.8, square: 0.8, heart: 0.7, oblong: 0.8, diamond: 0.7 } },
+      { name: 'ウルフミディ', length: 'medium', taste: 'cool',
+        desc: 'レイヤーたっぷりのウルフカット。トレンド感と動きのあるスタイル',
+        img: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=300&h=400&fit=crop',
+        match: { oval: 0.8, round: 0.9, square: 0.8, heart: 0.7, oblong: 0.7, diamond: 0.9 } },
+      { name: '韓国風ミディ', length: 'medium', taste: 'feminine',
+        desc: '顔周りのカーテンバングが特徴。エレガントで小顔効果も',
+        img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&h=400&fit=crop',
+        match: { oval: 0.9, round: 0.7, square: 0.8, heart: 0.9, oblong: 0.8, diamond: 0.8 } },
+      { name: 'ナチュラルストレート', length: 'medium', taste: 'natural',
+        desc: 'まとまりのある自然なストレート。清潔感と上品さを演出',
+        img: 'https://images.unsplash.com/photo-1504439904031-93ded9f93e4e?w=300&h=400&fit=crop',
+        match: { oval: 0.9, round: 0.6, square: 0.7, heart: 0.8, oblong: 0.9, diamond: 0.7 } },
+
+      // LONG
+      { name: 'ゆるふわロング', length: 'long', taste: 'feminine',
+        desc: '大きめカールのゆるふわスタイル。華やかさと柔らかさを両立',
+        img: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=300&h=400&fit=crop',
+        match: { oval: 0.8, round: 0.7, square: 0.9, heart: 0.8, oblong: 0.6, diamond: 0.8 } },
+      { name: 'ストレートロング', length: 'long', taste: 'cool',
+        desc: 'つやのあるストレート。シンプルで洗練された印象',
+        img: 'https://images.unsplash.com/photo-1526047932273-341f2a7631f9?w=300&h=400&fit=crop',
+        match: { oval: 0.9, round: 0.5, square: 0.6, heart: 0.8, oblong: 0.9, diamond: 0.7 } },
+      { name: 'レイヤーロング', length: 'long', taste: 'natural',
+        desc: 'たっぷりレイヤーで軽さを出したロング。重くなりすぎない',
+        img: 'https://images.unsplash.com/photo-1500917293891-ef795e70e1f6?w=300&h=400&fit=crop',
+        match: { oval: 0.9, round: 0.8, square: 0.8, heart: 0.7, oblong: 0.7, diamond: 0.8 } },
+      { name: '姫カット', length: 'long', taste: 'cool',
+        desc: '前髪パッツン+サイドストレート。個性的で印象的なスタイル',
+        img: 'https://images.unsplash.com/photo-1618336753974-aae8e04506aa?w=300&h=400&fit=crop',
+        match: { oval: 0.8, round: 0.5, square: 0.6, heart: 0.7, oblong: 0.9, diamond: 0.7 } },
+      { name: 'ナチュラルウェーブ', length: 'long', taste: 'casual',
+        desc: '自然なウェーブのリラックスロング。抜け感のある大人カジュアル',
+        img: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&h=400&fit=crop',
+        match: { oval: 0.8, round: 0.7, square: 0.8, heart: 0.8, oblong: 0.7, diamond: 0.8 } },
+      { name: 'ワンレングス', length: 'long', taste: 'natural',
+        desc: '切りっぱなしのワンレン。まとまり感とモード感を演出',
+        img: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=300&h=400&fit=crop',
+        match: { oval: 0.9, round: 0.6, square: 0.7, heart: 0.8, oblong: 0.8, diamond: 0.7 } },
+      { name: '巻き髪ロング', length: 'long', taste: 'feminine',
+        desc: '華やかなカールスタイル。パーティーや特別な日にも',
+        img: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=300&h=400&fit=crop',
+        match: { oval: 0.8, round: 0.8, square: 0.9, heart: 0.7, oblong: 0.6, diamond: 0.8 } },
+      { name: 'ポニーテール風レイヤー', length: 'long', taste: 'casual',
+        desc: 'まとめ髪にしても映えるレイヤーカット。アレンジ自在',
+        img: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&h=400&fit=crop',
+        match: { oval: 0.8, round: 0.7, square: 0.7, heart: 0.9, oblong: 0.7, diamond: 0.8 } },
+    ];
+
+    const TASTE_LABELS = { natural: 'ナチュラル', cool: 'クール', feminine: 'フェミニン', casual: 'カジュアル' };
+    const LENGTH_LABELS = { short: 'ショート', medium: 'ミディアム', long: 'ロング' };
+
+    // ==================== STATE ====================
     let segmenter = null;
+    let faceLandmarker = null;
     let selectedColor = COLORS[0];
-    let mode = 'camera'; // 'camera' | 'photo'
+    let mode = 'camera';
     let cameraRunning = false;
     let animFrameId = null;
+    let detectedFaceShape = null;
+    let activeFilters = { length: 'all', taste: 'all' };
 
     // Photo mode state
-    let photoOriginalData = null;
-    let photoMask = null;
-    let photoW = 0, photoH = 0;
+    let photoOriginalData = null, photoMask = null, photoW = 0, photoH = 0;
 
     // Elements
     const statusEl = document.getElementById('status');
@@ -263,17 +365,13 @@
     const liveCtx = liveCanvas.getContext('2d', { willReadFrequently: true });
     const fpsEl = document.getElementById('fps');
     const liveColorLabel = document.getElementById('liveColorLabel');
-    const originalCanvas = document.getElementById('originalCanvas');
-    const resultCanvas = document.getElementById('resultCanvas');
-    const resultLabel = document.getElementById('resultLabel');
     const intensitySlider = document.getElementById('intensity');
     const brightnessSlider = document.getElementById('brightness');
 
-    // --- HSV helpers ---
+    // ==================== HSV HELPERS ====================
     function rgbToHsv(r, g, b) {
       r /= 255; g /= 255; b /= 255;
-      const max = Math.max(r, g, b), min = Math.min(r, g, b);
-      const d = max - min;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
       let h = 0, s = max === 0 ? 0 : d / max, v = max;
       if (d !== 0) {
         if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
@@ -282,56 +380,74 @@
       }
       return [h * 360, s, v];
     }
-
     function hsvToRgb(h, s, v) {
       h = ((h % 360) + 360) % 360;
       const c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
       let r, g, b;
-      if (h < 60)       { r = c; g = x; b = 0; }
-      else if (h < 120) { r = x; g = c; b = 0; }
-      else if (h < 180) { r = 0; g = c; b = x; }
-      else if (h < 240) { r = 0; g = x; b = c; }
-      else if (h < 300) { r = x; g = 0; b = c; }
-      else              { r = c; g = 0; b = x; }
-      return [
-        Math.round((r + m) * 255),
-        Math.round((g + m) * 255),
-        Math.round((b + m) * 255),
-      ];
+      if (h < 60) { r=c;g=x;b=0; } else if (h<120) { r=x;g=c;b=0; }
+      else if (h<180) { r=0;g=c;b=x; } else if (h<240) { r=0;g=x;b=c; }
+      else if (h<300) { r=x;g=0;b=c; } else { r=c;g=0;b=x; }
+      return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
     }
 
-    // --- Apply color to pixels using mask ---
-    function applyColorToPixels(srcData, maskData, width, height, outData) {
+    function applyColorToPixels(srcData, maskData, w, h, outData) {
       const intensity = intensitySlider.value / 100;
       const brightnessAdj = brightnessSlider.value / 100;
-      const totalPixels = width * height;
-
-      for (let i = 0; i < totalPixels; i++) {
+      for (let i = 0; i < w * h; i++) {
         const alpha = maskData[i] * intensity;
         const px = i * 4;
-        const r = srcData[px], g = srcData[px + 1], b = srcData[px + 2];
-
+        const r = srcData[px], g = srcData[px+1], b = srcData[px+2];
         if (alpha > 0.05) {
-          const [oh, os, ov] = rgbToHsv(r, g, b);
-          const newH = selectedColor.h;
-          const newS = selectedColor.s * 0.65 + os * 0.35;
-          const newV = Math.min(1, Math.max(0, selectedColor.v * 0.35 + ov * 0.65 + brightnessAdj));
-          const [nr, ng, nb] = hsvToRgb(newH, newS, newV);
-
-          outData[px]     = Math.round(nr * alpha + r * (1 - alpha));
-          outData[px + 1] = Math.round(ng * alpha + g * (1 - alpha));
-          outData[px + 2] = Math.round(nb * alpha + b * (1 - alpha));
-        } else {
-          outData[px]     = r;
-          outData[px + 1] = g;
-          outData[px + 2] = b;
-        }
-        outData[px + 3] = 255;
+          const [oh,os,ov] = rgbToHsv(r,g,b);
+          const [nr,ng,nb] = hsvToRgb(selectedColor.h, selectedColor.s*0.65+os*0.35, Math.min(1,Math.max(0,selectedColor.v*0.35+ov*0.65+brightnessAdj)));
+          outData[px]=Math.round(nr*alpha+r*(1-alpha));
+          outData[px+1]=Math.round(ng*alpha+g*(1-alpha));
+          outData[px+2]=Math.round(nb*alpha+b*(1-alpha));
+        } else { outData[px]=r; outData[px+1]=g; outData[px+2]=b; }
+        outData[px+3]=255;
       }
     }
 
-    // ============ CAMERA MODE ============
+    // ==================== FACE SHAPE DETECTION ====================
+    function classifyFaceShape(landmarks) {
+      // Key landmark indices for measurements
+      const lm = landmarks;
+      // Face length: forehead top (10) to chin (152)
+      const faceLength = Math.abs(lm[10].y - lm[152].y);
+      // Forehead width: left temple (70) to right temple (300)
+      const foreheadWidth = Math.abs(lm[70].x - lm[300].x);
+      // Cheekbone width: left cheek (234) to right cheek (454)
+      const cheekboneWidth = Math.abs(lm[234].x - lm[454].x);
+      // Jawline width: left jaw (172) to right jaw (397)
+      const jawlineWidth = Math.abs(lm[172].x - lm[397].x);
 
+      const avgWidth = (foreheadWidth + cheekboneWidth + jawlineWidth) / 3;
+      const lengthToWidth = faceLength / avgWidth;
+      const fwRatio = foreheadWidth / cheekboneWidth;
+      const jwRatio = jawlineWidth / cheekboneWidth;
+
+      let shape;
+      if (lengthToWidth > 1.55) {
+        shape = 'oblong';
+      } else if (lengthToWidth < 1.15) {
+        shape = 'round';
+      } else if (jwRatio > 0.9 && fwRatio > 0.9) {
+        shape = 'square';
+      } else if (fwRatio > 0.95 && jwRatio < 0.75) {
+        shape = 'heart';
+      } else if (fwRatio < 0.85 && jwRatio < 0.85) {
+        shape = 'diamond';
+      } else {
+        shape = 'oval';
+      }
+
+      return {
+        shape,
+        measurements: { faceLength, foreheadWidth, cheekboneWidth, jawlineWidth, lengthToWidth }
+      };
+    }
+
+    // ==================== CAMERA MODE ====================
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -339,11 +455,8 @@
         });
         video.srcObject = stream;
         await video.play();
-
-        // Set canvas size to match video
         liveCanvas.width = video.videoWidth;
         liveCanvas.height = video.videoHeight;
-
         cameraRunning = true;
         processFrame();
       } catch (err) {
@@ -351,164 +464,216 @@
         statusEl.className = 'status error';
       }
     }
-
     function stopCamera() {
       cameraRunning = false;
       if (animFrameId) cancelAnimationFrame(animFrameId);
-      if (video.srcObject) {
-        video.srcObject.getTracks().forEach(t => t.stop());
-        video.srcObject = null;
-      }
+      if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
     }
 
-    let lastFrameTime = 0;
-    let frameCount = 0;
-    let fpsDisplay = 0;
+    let lastFrameTime = 0, frameCount = 0, fpsDisplay = 0;
 
     async function processFrame() {
       if (!cameraRunning || !segmenter) return;
-
       const now = performance.now();
-
-      // Draw video frame to canvas
       liveCtx.drawImage(video, 0, 0);
-
-      // Segment
       try {
         const result = segmenter.segmentForVideo(liveCanvas, now);
-
         if (result.confidenceMasks && result.confidenceMasks.length > 0) {
           const maskData = result.confidenceMasks[0].getAsFloat32Array();
           const w = liveCanvas.width, h = liveCanvas.height;
-
-          // Build inverted mask
           const hairMask = new Float32Array(w * h);
-          for (let i = 0; i < w * h; i++) {
-            hairMask[i] = 1.0 - maskData[i];
-          }
-
-          // Get current frame pixels
+          for (let i = 0; i < w * h; i++) hairMask[i] = 1.0 - maskData[i];
           const frameData = liveCtx.getImageData(0, 0, w, h);
           const outImg = liveCtx.createImageData(w, h);
-
           applyColorToPixels(frameData.data, hairMask, w, h, outImg.data);
           liveCtx.putImageData(outImg, 0, 0);
         }
         result.close();
-      } catch (e) {
-        // Skip frame on error
-      }
-
-      // FPS counter
+      } catch (e) {}
       frameCount++;
-      if (now - lastFrameTime >= 1000) {
-        fpsDisplay = frameCount;
-        frameCount = 0;
-        lastFrameTime = now;
-        fpsEl.textContent = fpsDisplay + ' fps';
-      }
-
+      if (now - lastFrameTime >= 1000) { fpsDisplay = frameCount; frameCount = 0; lastFrameTime = now; fpsEl.textContent = fpsDisplay + ' fps'; }
       animFrameId = requestAnimationFrame(processFrame);
     }
 
-    // ============ PHOTO MODE ============
-
+    // ==================== PHOTO MODE ====================
     const uploadArea = document.getElementById('uploadArea');
     const fileInput = document.getElementById('fileInput');
-
     uploadArea.addEventListener('click', () => fileInput.click());
-    uploadArea.addEventListener('dragover', e => { e.preventDefault(); });
-    uploadArea.addEventListener('drop', e => {
-      e.preventDefault();
-      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-    });
-    fileInput.addEventListener('change', e => {
-      if (e.target.files.length) handleFile(e.target.files[0]);
-    });
+    uploadArea.addEventListener('dragover', e => e.preventDefault());
+    uploadArea.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer.files.length) handlePhotoFile(e.dataTransfer.files[0]); });
+    fileInput.addEventListener('change', e => { if (e.target.files.length) handlePhotoFile(e.target.files[0]); });
 
-    async function handleFile(file) {
+    async function handlePhotoFile(file) {
       if (!segmenter) return;
-      statusEl.textContent = 'Processing...';
-
+      statusEl.textContent = 'Processing...'; statusEl.className = 'status processing';
       const img = new Image();
       img.onload = async () => {
         const maxDim = 512;
         let w = img.width, h = img.height;
-        if (w > maxDim || h > maxDim) {
-          const scale = maxDim / Math.max(w, h);
-          w = Math.round(w * scale);
-          h = Math.round(h * scale);
-        }
+        if (w > maxDim || h > maxDim) { const s = maxDim / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
         photoW = w; photoH = h;
-
-        originalCanvas.width = w; originalCanvas.height = h;
-        const origCtx = originalCanvas.getContext('2d');
+        const origCanvas = document.getElementById('originalCanvas');
+        origCanvas.width = w; origCanvas.height = h;
+        const origCtx = origCanvas.getContext('2d');
         origCtx.drawImage(img, 0, 0, w, h);
         photoOriginalData = origCtx.getImageData(0, 0, w, h);
-
-        resultCanvas.width = w; resultCanvas.height = h;
-
-        // Need IMAGE mode for photos
+        const resCanvas = document.getElementById('resultCanvas');
+        resCanvas.width = w; resCanvas.height = h;
         segmenter.setOptions({ runningMode: 'IMAGE' });
-        const result = segmenter.segment(originalCanvas);
-
+        const result = segmenter.segment(origCanvas);
         if (result.confidenceMasks && result.confidenceMasks.length > 0) {
           const maskData = result.confidenceMasks[0].getAsFloat32Array();
           photoMask = new Float32Array(w * h);
-          for (let i = 0; i < w * h; i++) {
-            photoMask[i] = 1.0 - maskData[i];
-          }
+          for (let i = 0; i < w * h; i++) photoMask[i] = 1.0 - maskData[i];
           applyPhotoColor();
           document.getElementById('photoContainer').classList.remove('hidden');
-          statusEl.textContent = 'Done! Try different colors.';
-          statusEl.className = 'status ready';
+          statusEl.textContent = 'Done! Try different colors.'; statusEl.className = 'status ready';
         }
         result.close();
-        // Switch back to VIDEO mode if camera is active
         segmenter.setOptions({ runningMode: 'VIDEO' });
       };
       img.src = URL.createObjectURL(file);
     }
-
     function applyPhotoColor() {
       if (!photoMask || !photoOriginalData) return;
-      const ctx = resultCanvas.getContext('2d');
+      const ctx = document.getElementById('resultCanvas').getContext('2d');
       const outImg = ctx.createImageData(photoW, photoH);
       applyColorToPixels(photoOriginalData.data, photoMask, photoW, photoH, outImg.data);
       ctx.putImageData(outImg, 0, 0);
-      resultLabel.textContent = selectedColor.name;
+      document.getElementById('resultLabel').textContent = selectedColor.name;
     }
 
-    // ============ MODE SWITCHING ============
+    // ==================== STYLE FINDER MODE ====================
+    const styleUploadArea = document.getElementById('styleUploadArea');
+    const styleFileInput = document.getElementById('styleFileInput');
+    styleUploadArea.addEventListener('click', () => styleFileInput.click());
+    styleFileInput.addEventListener('change', e => { if (e.target.files.length) handleStyleFile(e.target.files[0]); });
 
+    async function handleStyleFile(file) {
+      if (!faceLandmarker) { statusEl.textContent = 'Face model not loaded'; return; }
+      statusEl.textContent = 'Analyzing face shape...'; statusEl.className = 'status processing';
+      const img = new Image();
+      img.onload = async () => {
+        const maxDim = 512;
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) { const s = maxDim / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+        const canvas = document.getElementById('styleAnalysisCanvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+
+        faceLandmarker.setOptions({ runningMode: 'IMAGE' });
+        const result = faceLandmarker.detect(canvas);
+        faceLandmarker.setOptions({ runningMode: 'VIDEO' });
+
+        if (result.faceLandmarks && result.faceLandmarks.length > 0) {
+          const analysis = classifyFaceShape(result.faceLandmarks[0]);
+          detectedFaceShape = analysis.shape;
+
+          // Show result
+          document.getElementById('faceShapeBadge').textContent = FACE_SHAPE_NAMES[analysis.shape];
+          const m = analysis.measurements;
+          document.getElementById('faceMeasurements').textContent =
+            `L/W ratio: ${m.lengthToWidth.toFixed(2)} | Forehead: ${(m.foreheadWidth*100).toFixed(0)} | Cheek: ${(m.cheekboneWidth*100).toFixed(0)} | Jaw: ${(m.jawlineWidth*100).toFixed(0)}`;
+          document.getElementById('faceResult').classList.remove('hidden');
+          document.getElementById('styleFilters').classList.remove('hidden');
+
+          renderStyleCards();
+          statusEl.textContent = 'Face analyzed! Browse recommended styles.'; statusEl.className = 'status ready';
+        } else {
+          statusEl.textContent = 'No face detected. Please try a different photo.'; statusEl.className = 'status error';
+        }
+      };
+      img.src = URL.createObjectURL(file);
+    }
+
+    function renderStyleCards() {
+      const grid = document.getElementById('styleGrid');
+      grid.innerHTML = '';
+
+      let filtered = STYLES.filter(s => {
+        if (activeFilters.length !== 'all' && s.length !== activeFilters.length) return false;
+        if (activeFilters.taste !== 'all' && s.taste !== activeFilters.taste) return false;
+        return true;
+      });
+
+      // Sort by face match score
+      const shape = detectedFaceShape || 'oval';
+      filtered.sort((a, b) => (b.match[shape] || 0) - (a.match[shape] || 0));
+
+      filtered.forEach(style => {
+        const score = style.match[shape] || 0;
+        const matchClass = score >= 0.8 ? 'match-high' : score >= 0.6 ? 'match-mid' : 'match-low';
+        const matchText = score >= 0.8 ? '相性◎' : score >= 0.6 ? '相性○' : '相性△';
+
+        const card = document.createElement('div');
+        card.className = 'style-card';
+        card.innerHTML = `
+          <img class="style-card-img" src="${style.img}" alt="${style.name}" loading="lazy" onerror="this.style.background='#2a2a4e'">
+          <div class="style-card-body">
+            <div class="style-card-name">${style.name}</div>
+            <div class="style-card-meta">${LENGTH_LABELS[style.length]} / ${TASTE_LABELS[style.taste]}</div>
+            <span class="style-card-match ${matchClass}">${matchText} ${Math.round(score * 100)}%</span>
+            <div class="style-card-desc">${style.desc}</div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // Filter buttons
+    document.getElementById('lengthFilters').addEventListener('click', e => {
+      if (!e.target.matches('.filter-btn')) return;
+      document.querySelectorAll('#lengthFilters .filter-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      activeFilters.length = e.target.dataset.filter;
+      renderStyleCards();
+    });
+    document.getElementById('tasteFilters').addEventListener('click', e => {
+      if (!e.target.matches('.filter-btn')) return;
+      document.querySelectorAll('#tasteFilters .filter-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      activeFilters.taste = e.target.dataset.filter;
+      renderStyleCards();
+    });
+
+    // ==================== MODE SWITCHING ====================
     const modeCameraBtn = document.getElementById('modeCameraBtn');
     const modePhotoBtn = document.getElementById('modePhotoBtn');
+    const modeStyleBtn = document.getElementById('modeStyleBtn');
     const cameraModeEl = document.getElementById('cameraMode');
     const photoModeEl = document.getElementById('photoMode');
+    const styleModeEl = document.getElementById('styleMode');
+    const colorControlsEl = document.getElementById('colorControls');
 
-    modeCameraBtn.addEventListener('click', () => {
-      if (mode === 'camera') return;
-      mode = 'camera';
-      modeCameraBtn.classList.add('active');
-      modePhotoBtn.classList.remove('active');
-      cameraModeEl.classList.remove('hidden');
-      photoModeEl.classList.add('hidden');
-      segmenter.setOptions({ runningMode: 'VIDEO' });
-      startCamera();
-    });
+    function switchMode(newMode) {
+      if (mode === newMode) return;
+      mode = newMode;
+      [modeCameraBtn, modePhotoBtn, modeStyleBtn].forEach(b => b.classList.remove('active'));
+      [cameraModeEl, photoModeEl, styleModeEl].forEach(el => el.classList.add('hidden'));
 
-    modePhotoBtn.addEventListener('click', () => {
-      if (mode === 'photo') return;
-      mode = 'photo';
-      modePhotoBtn.classList.add('active');
-      modeCameraBtn.classList.remove('active');
-      photoModeEl.classList.remove('hidden');
-      cameraModeEl.classList.add('hidden');
-      stopCamera();
-    });
+      if (newMode === 'camera') {
+        modeCameraBtn.classList.add('active');
+        cameraModeEl.classList.remove('hidden');
+        colorControlsEl.classList.remove('hidden');
+        segmenter.setOptions({ runningMode: 'VIDEO' });
+        startCamera();
+      } else if (newMode === 'photo') {
+        modePhotoBtn.classList.add('active');
+        photoModeEl.classList.remove('hidden');
+        colorControlsEl.classList.remove('hidden');
+        stopCamera();
+      } else if (newMode === 'style') {
+        modeStyleBtn.classList.add('active');
+        styleModeEl.classList.remove('hidden');
+        colorControlsEl.classList.add('hidden');
+        stopCamera();
+      }
+    }
+    modeCameraBtn.addEventListener('click', () => switchMode('camera'));
+    modePhotoBtn.addEventListener('click', () => switchMode('photo'));
+    modeStyleBtn.addEventListener('click', () => switchMode('style'));
 
-    // ============ COLOR PALETTE ============
-
+    // ==================== COLOR PALETTE ====================
     function buildPalette() {
       const palette = document.getElementById('colorPalette');
       COLORS.forEach((color, i) => {
@@ -526,19 +691,10 @@
       });
     }
 
-    // ============ SLIDER EVENTS ============
+    intensitySlider.addEventListener('input', () => { document.getElementById('intensityValue').textContent = intensitySlider.value; if (photoMask) applyPhotoColor(); });
+    brightnessSlider.addEventListener('input', () => { document.getElementById('brightnessValue').textContent = brightnessSlider.value; if (photoMask) applyPhotoColor(); });
 
-    intensitySlider.addEventListener('input', () => {
-      document.getElementById('intensityValue').textContent = intensitySlider.value;
-      if (photoMask) applyPhotoColor();
-    });
-    brightnessSlider.addEventListener('input', () => {
-      document.getElementById('brightnessValue').textContent = brightnessSlider.value;
-      if (photoMask) applyPhotoColor();
-    });
-
-    // ============ INIT ============
-
+    // ==================== INIT ====================
     async function init() {
       try {
         statusEl.textContent = 'Loading MediaPipe Vision...';
@@ -546,7 +702,7 @@
           'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm'
         );
 
-        statusEl.textContent = 'Loading Hair Segmenter model...';
+        statusEl.textContent = 'Loading Hair Segmenter...';
         segmenter = await ImageSegmenter.createFromOptions(vision, {
           baseOptions: {
             modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/hair_segmenter/float32/latest/hair_segmenter.tflite',
@@ -557,10 +713,19 @@
           outputConfidenceMasks: true,
         });
 
+        statusEl.textContent = 'Loading Face Landmarker...';
+        faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+            delegate: 'GPU',
+          },
+          runningMode: 'VIDEO',
+          numFaces: 1,
+        });
+
         statusEl.textContent = 'Starting camera...';
         await startCamera();
-
-        statusEl.textContent = 'Live! Change colors below.';
+        statusEl.textContent = 'Live! Change colors below or try Style Finder.';
         statusEl.className = 'status ready';
       } catch (err) {
         statusEl.textContent = `Error: ${err.message}`;
