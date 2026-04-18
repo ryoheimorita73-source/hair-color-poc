@@ -153,6 +153,7 @@
   <div class="mode-toggle">
     <button class="mode-btn active" id="modeCameraBtn">Camera (Live)</button>
     <button class="mode-btn" id="modePhotoBtn">Photo (Upload)</button>
+    <button class="mode-btn" id="modeSnapshotBtn" style="background:#6c5ce7;border-color:#6c5ce7;color:#fff;">✨ AI Snapshot</button>
     <button class="mode-btn" id="modeStyleBtn" style="display:none;">Style Finder</button>
   </div>
 
@@ -183,6 +184,64 @@
         <div class="photo-label" id="resultLabel">Result</div>
       </div>
     </div>
+  </div>
+
+  <!-- ====== AI SNAPSHOT MODE (FLUX Kontext) ====== -->
+  <div id="snapshotMode" class="hidden">
+    <div style="max-width:640px;width:100%;margin-bottom:12px;padding:12px 16px;background:#16213e;border:1px solid #6c5ce7;border-radius:8px;font-size:0.8em;">
+      <div style="font-weight:bold;color:#a29bfe;margin-bottom:4px;">✨ AI Snapshot (FLUX Kontext)</div>
+      <div style="color:#aaa;">High-quality hair color generation via generative AI. Takes 10–30 seconds per color. Cost: ~$0.04/generation.</div>
+    </div>
+
+    <!-- Source photo (upload or snap from camera) -->
+    <div class="upload-area" id="snapUploadArea" style="padding:20px;">
+      <p>Click to upload a photo — OR use "Snap from Camera" below</p>
+      <p style="font-size:0.75em; color:#888; margin-top:6px;">JPG/PNG, front-facing photo works best</p>
+      <input type="file" id="snapFileInput" accept="image/*">
+    </div>
+
+    <button id="snapFromCameraBtn" style="margin-bottom:12px;padding:10px 20px;background:#16213e;border:2px solid #00b894;color:#00b894;border-radius:8px;cursor:pointer;font-size:0.85em;">
+      📷 Snap from Camera
+    </button>
+
+    <!-- Source preview -->
+    <div id="snapSourceWrapper" class="photo-container hidden" style="margin-bottom:12px;">
+      <div class="photo-wrapper">
+        <canvas id="snapSourceCanvas" style="max-width:260px;"></canvas>
+        <div class="photo-label">Source</div>
+      </div>
+    </div>
+
+    <!-- Color selector for snapshot (reuses main palette) -->
+    <div id="snapColorSection" class="hidden" style="max-width:640px;width:100%;">
+      <p style="font-size:0.8em;color:#aaa;margin-bottom:6px;">Select a target color:</p>
+      <div class="color-palette" id="snapColorPalette" style="margin-bottom:12px;"></div>
+
+      <button id="snapGenerateBtn" style="margin-bottom:16px;padding:12px 24px;background:#6c5ce7;border:none;color:#fff;border-radius:8px;cursor:pointer;font-size:0.9em;font-weight:bold;width:100%;">
+        🚀 Generate with FLUX Kontext
+      </button>
+    </div>
+
+    <!-- Loading state -->
+    <div id="snapLoading" class="hidden" style="max-width:640px;width:100%;text-align:center;padding:24px;background:#16213e;border:1px solid #6c5ce7;border-radius:8px;margin-bottom:12px;">
+      <div style="font-size:1.2em;margin-bottom:8px;">🔄 Generating...</div>
+      <div id="snapLoadingTimer" style="font-size:0.85em;color:#a29bfe;">0.0s elapsed</div>
+      <div style="font-size:0.75em;color:#888;margin-top:4px;">Typical wait: 10–30 seconds</div>
+    </div>
+
+    <!-- Result -->
+    <div id="snapResultWrapper" class="photo-container hidden" style="margin-bottom:12px;">
+      <div class="photo-wrapper">
+        <canvas id="snapSourceCanvas2" style="max-width:260px;"></canvas>
+        <div class="photo-label">Original</div>
+      </div>
+      <div class="photo-wrapper" style="border:2px solid #6c5ce7;">
+        <img id="snapResultImg" style="display:block;max-width:260px;width:100%;height:auto;" />
+        <div class="photo-label" id="snapResultLabel" style="background:rgba(108,92,231,0.8);">AI Result</div>
+      </div>
+    </div>
+
+    <div id="snapMetadata" class="hidden" style="max-width:640px;width:100%;font-size:0.7em;color:#888;text-align:center;margin-bottom:12px;"></div>
   </div>
 
   <!-- ====== STYLE FINDER MODE ====== -->
@@ -725,16 +784,18 @@
     const modeCameraBtn = document.getElementById('modeCameraBtn');
     const modePhotoBtn = document.getElementById('modePhotoBtn');
     const modeStyleBtn = document.getElementById('modeStyleBtn');
+    const modeSnapshotBtn = document.getElementById('modeSnapshotBtn');
     const cameraModeEl = document.getElementById('cameraMode');
     const photoModeEl = document.getElementById('photoMode');
     const styleModeEl = document.getElementById('styleMode');
+    const snapshotModeEl = document.getElementById('snapshotMode');
     const colorControlsEl = document.getElementById('colorControls');
 
     function switchMode(newMode) {
       if (mode === newMode) return;
       mode = newMode;
-      [modeCameraBtn, modePhotoBtn, modeStyleBtn].forEach(b => b.classList.remove('active'));
-      [cameraModeEl, photoModeEl, styleModeEl].forEach(el => el.classList.add('hidden'));
+      [modeCameraBtn, modePhotoBtn, modeStyleBtn, modeSnapshotBtn].forEach(b => b.classList.remove('active'));
+      [cameraModeEl, photoModeEl, styleModeEl, snapshotModeEl].forEach(el => el.classList.add('hidden'));
 
       if (newMode === 'camera') {
         modeCameraBtn.classList.add('active');
@@ -752,11 +813,186 @@
         styleModeEl.classList.remove('hidden');
         colorControlsEl.classList.add('hidden');
         stopCamera();
+      } else if (newMode === 'snapshot') {
+        modeSnapshotBtn.classList.add('active');
+        snapshotModeEl.classList.remove('hidden');
+        colorControlsEl.classList.add('hidden');
+        // Keep camera running for "Snap from Camera" option
       }
     }
     modeCameraBtn.addEventListener('click', () => switchMode('camera'));
     modePhotoBtn.addEventListener('click', () => switchMode('photo'));
     modeStyleBtn.addEventListener('click', () => switchMode('style'));
+    modeSnapshotBtn.addEventListener('click', () => switchMode('snapshot'));
+
+    // ==================== AI SNAPSHOT MODE (FLUX Kontext) ====================
+    // API endpoint: '/api/generate' when deployed on Vercel,
+    // or a full URL if frontend is on GitHub Pages and API is on Vercel.
+    // Set via window.__SNAPSHOT_API_URL at runtime, else defaults to same-origin /api/generate.
+    const SNAPSHOT_API_URL = (typeof window !== 'undefined' && window.__SNAPSHOT_API_URL)
+      ? window.__SNAPSHOT_API_URL
+      : '/api/generate';
+
+    const snapUploadArea = document.getElementById('snapUploadArea');
+    const snapFileInput = document.getElementById('snapFileInput');
+    const snapFromCameraBtn = document.getElementById('snapFromCameraBtn');
+    const snapSourceCanvas = document.getElementById('snapSourceCanvas');
+    const snapSourceCanvas2 = document.getElementById('snapSourceCanvas2');
+    const snapSourceWrapper = document.getElementById('snapSourceWrapper');
+    const snapColorSection = document.getElementById('snapColorSection');
+    const snapGenerateBtn = document.getElementById('snapGenerateBtn');
+    const snapLoading = document.getElementById('snapLoading');
+    const snapLoadingTimer = document.getElementById('snapLoadingTimer');
+    const snapResultWrapper = document.getElementById('snapResultWrapper');
+    const snapResultImg = document.getElementById('snapResultImg');
+    const snapResultLabel = document.getElementById('snapResultLabel');
+    const snapMetadata = document.getElementById('snapMetadata');
+
+    let snapSourceDataURL = null;
+    let snapSelectedColor = null;
+    let snapTimerInterval = null;
+
+    // File upload handler
+    snapUploadArea.addEventListener('click', () => snapFileInput.click());
+    snapUploadArea.addEventListener('dragover', e => e.preventDefault());
+    snapUploadArea.addEventListener('drop', e => {
+      e.preventDefault();
+      if (e.dataTransfer.files.length) loadSnapSource(e.dataTransfer.files[0]);
+    });
+    snapFileInput.addEventListener('change', e => {
+      if (e.target.files.length) loadSnapSource(e.target.files[0]);
+    });
+
+    async function loadSnapSource(file) {
+      const img = new Image();
+      img.onload = () => {
+        // Resize to reasonable size for API (max 1024px)
+        const maxDim = 1024;
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          const s = maxDim / Math.max(w, h);
+          w = Math.round(w * s);
+          h = Math.round(h * s);
+        }
+        // Draw to both source canvases
+        for (const c of [snapSourceCanvas, snapSourceCanvas2]) {
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+        }
+        snapSourceDataURL = snapSourceCanvas.toDataURL('image/jpeg', 0.9);
+        snapSourceWrapper.classList.remove('hidden');
+        snapColorSection.classList.remove('hidden');
+        snapResultWrapper.classList.add('hidden');
+        snapMetadata.classList.add('hidden');
+      };
+      img.src = URL.createObjectURL(file);
+    }
+
+    // Snap from camera button
+    snapFromCameraBtn.addEventListener('click', async () => {
+      // Need camera running; if not in camera mode, briefly start it
+      if (!cameraRunning) {
+        statusEl.textContent = 'Starting camera for snapshot...';
+        try {
+          await startCamera();
+          // Wait a bit for camera to initialize
+          await new Promise(r => setTimeout(r, 500));
+        } catch (e) {
+          alert('Camera access failed: ' + e.message);
+          return;
+        }
+      }
+
+      // Capture current frame from video (not liveCanvas, which has the LAB overlay)
+      const v = document.getElementById('video');
+      if (!v.videoWidth) { alert('Camera not ready yet, try again'); return; }
+
+      const maxDim = 1024;
+      let w = v.videoWidth, h = v.videoHeight;
+      if (w > maxDim || h > maxDim) {
+        const s = maxDim / Math.max(w, h);
+        w = Math.round(w * s);
+        h = Math.round(h * s);
+      }
+
+      for (const c of [snapSourceCanvas, snapSourceCanvas2]) {
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(v, 0, 0, w, h);
+      }
+      snapSourceDataURL = snapSourceCanvas.toDataURL('image/jpeg', 0.9);
+      snapSourceWrapper.classList.remove('hidden');
+      snapColorSection.classList.remove('hidden');
+      snapResultWrapper.classList.add('hidden');
+      snapMetadata.classList.add('hidden');
+
+      // Stop the live camera to save battery (user explicitly triggered snap)
+      stopCamera();
+    });
+
+    // Build snapshot color palette (reuses COLORS array)
+    function buildSnapPalette() {
+      const palette = document.getElementById('snapColorPalette');
+      COLORS.forEach((color, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'color-btn';
+        btn.innerHTML = `<span class="color-swatch" style="background:${color.bg}"></span>${color.name}`;
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#snapColorPalette .color-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          snapSelectedColor = color;
+        });
+        palette.appendChild(btn);
+      });
+    }
+    buildSnapPalette();
+
+    // Generate button
+    snapGenerateBtn.addEventListener('click', async () => {
+      if (!snapSourceDataURL) { alert('Please upload or snap a photo first'); return; }
+      if (!snapSelectedColor) { alert('Please select a target color'); return; }
+
+      snapGenerateBtn.disabled = true;
+      snapLoading.classList.remove('hidden');
+      snapResultWrapper.classList.add('hidden');
+      snapMetadata.classList.add('hidden');
+
+      const startTime = Date.now();
+      snapLoadingTimer.textContent = '0.0s elapsed';
+      snapTimerInterval = setInterval(() => {
+        const elapsed = (Date.now() - startTime) / 1000;
+        snapLoadingTimer.textContent = elapsed.toFixed(1) + 's elapsed';
+      }, 100);
+
+      try {
+        const response = await fetch(SNAPSHOT_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image_url: snapSourceDataURL,
+            color_name: snapSelectedColor.name,
+          }),
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({ error: response.statusText }));
+          throw new Error(err.error || `HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        snapResultImg.src = data.image_url;
+        snapResultLabel.textContent = snapSelectedColor.name + ' (AI)';
+        snapResultWrapper.classList.remove('hidden');
+        snapMetadata.textContent = `Generated in ${data.seconds?.toFixed(1)}s · FLUX.1 Kontext [pro]`;
+        snapMetadata.classList.remove('hidden');
+      } catch (err) {
+        alert('Generation failed: ' + err.message + '\n\nIs the API deployed? Check browser console for details.');
+        console.error(err);
+      } finally {
+        clearInterval(snapTimerInterval);
+        snapLoading.classList.add('hidden');
+        snapGenerateBtn.disabled = false;
+      }
+    });
 
     // ==================== COLOR PALETTE ====================
     function buildPalette() {
