@@ -21,20 +21,55 @@ const COLOR_PROMPTS = {
   "Copper":       "Change only the hair color to a vibrant copper orange with warm reddish tones. Preserve the exact same hairstyle, face, skin, background, clothing, and lighting. Do not change anything except hair color.",
 };
 
-function setCors(res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+// Only allow requests from our own frontend(s) to prevent credit abuse.
+// Set ALLOWED_ORIGINS as comma-separated env var in Vercel for extra domains.
+const DEFAULT_ALLOWED = [
+  "https://hair-color-ai-poc.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:3456",
+];
+
+function isAllowedOrigin(origin) {
+  if (!origin) return false;
+  const extra = (process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const allowed = [...DEFAULT_ALLOWED, ...extra];
+  if (allowed.includes(origin)) return true;
+  // Allow Vercel preview deployments for this project
+  if (/^https:\/\/hair-color-ai-poc-[a-z0-9-]+\.vercel\.app$/.test(origin)) return true;
+  return false;
+}
+
+function setCors(req, res) {
+  const origin = req.headers.origin || "";
+  if (isAllowedOrigin(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
 export default async function handler(req, res) {
-  setCors(res);
+  setCors(req, res);
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed. Use POST." });
+  }
+
+  // Block requests from origins we don't recognize (browser scripts / abuse)
+  const origin = req.headers.origin || "";
+  if (!isAllowedOrigin(origin)) {
+    return res.status(403).json({
+      error: "Origin not allowed",
+      origin,
+      hint: "Set ALLOWED_ORIGINS env var to add more domains.",
+    });
   }
 
   const start = Date.now();
